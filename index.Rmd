@@ -1,0 +1,202 @@
+---
+title: Illustration of the Central Limit Theorem (CLT) with the Exponential Distribution
+  Using R
+author: "Bertrand Rigaldies"
+date: "January 23, 2016"
+output: html_document
+geometry: margin=.5in
+fontsize: 10pt
+---
+
+```{r global_options, echo=FALSE, warning=FALSE, message=FALSE, error=TRUE}
+# Load the knitr librabry, and set global options silently.
+require(knitr)
+#opts_chunk$set(warning=FALSE, message=FALSE, error=TRUE, dev = 'pdf')
+opts_chunk$set(warning=FALSE, message=FALSE, error=TRUE)
+```
+```{r echo=FALSE, results="hide"}
+# fig_num is used to number figures in the report.
+fig_num <- 1
+```
+```{r libraries, echo=FALSE, results="hide"}
+require(ggplot2) # Plotting
+```
+
+## Abstract
+
+The paper illustrates the Central Limit Theorem (CLT) using the exponential distribution with $\lambda = 0.2$.
+
+The exponential distribution can be simulated in R with `rexp(n, lambda)` where $lambda (\lambda)$ is the rate parameter. The mean and standard deviation of an exponential distribution are both $\frac{1}{\lambda}$ (See [math](https://en.wikipedia.org/?title=Exponential_distribution)). A $\lambda = 0.2$ is used in the report's simulations. See Appendix A for an illustration of the exponential distribution.
+
+The following simulations are documented in the paper:
+
+1. **Exponential Samples Mean As a Population Mean Estimator**: The cumulative mean of one thousand exponential samples are plotted to show the means' asymptote, expected to be the distribution's theoretical mean according to the Law of Large Numbers (LLN).
+2. **Exponential Samples Standard Deviation As a Population Standard Deviation Estimator**: Likewise, the cumulative standard deviation of one thousand exponential samples are plotted to show the standard deviations' asymptote, expected to be the distribution's theoretical standard deviation according to the Law of Large Numbers.
+3. **Normalized Exponential Samples Means Distribution**: The normalized mean of an N-sample trial (N = 5, 10, and 40) is repeated one thousand times, and plotted with an overlapping standard normal distribution for comparison.
+
+## Exponential Samples Mean As a Population Mean Estimator
+
+According to the the Law of Large Numbers (LLN), an iid population sample average limits to what it is estimating, that is, the population average. The simulation in Figure `r fig_num` illustrates the LLN with an exponential samples average estimator (See the cirresponding R code in Appendice B). Figure `r fig_num` shows that the exponential samples average estimator limits to the theoretical exponential distribution mean $\frac{1}{\lambda} = 5$. Or stated otherwise by the LLN, the exponential samples average is "consistent with the population's mean".
+
+```{r mean_estimator, echo=FALSE, fig.width=9, fig.height = 4, fig.align='center'}
+n <- 1000; lambda <- 0.2; means <- cumsum(rexp(n, lambda))/(1:n)
+annotations <- data.frame(x = c(500), y = c(1/lambda), 
+        label = c(sprintf("Theoretical Exponential Distribution Average: 1/lambda=%d", 1/lambda)))
+print(ggplot(data.frame(x = 1 : n, y = means), aes(x = x, y = y)) + 
+        geom_hline(yintercept = 1/lambda, colour="blue") + geom_line(size = 2) +
+        labs(x = "Number of Samples",
+             y = "Cumulative Exponential Samples Mean",
+             title = paste('Fig.', fig_num, ': Exponential Samples Mean Estimator')) +
+        geom_text(data = annotations, aes(x = x, y = y, label = label), col = "blue", vjust = -1, size = 4))
+```
+```{r echo=FALSE, results="hide"}
+fig_num <- fig_num + 1
+```
+
+## Exponential Samples Standard Deviation Estimator
+
+As shown in Figure `r fig_num` (See the cirresponding R code in Appendice C), the exponential sample standard deviation is also consistent with the population's standard deviation $\frac{1}{\lambda} = 5$.
+
+```{r sd_estimator, echo=FALSE, fig.width=9, fig.height = 4, fig.align='center'}
+samples <- rexp(n, lambda)
+sds <- c()
+for(i in 2:n){ sds[i-1] <- sd(samples[1:i])}
+annotations <- data.frame(x = c(500), y = c(1/lambda), 
+        label = c(sprintf("Theoretical Exponential Distribution Standard Deviation: 1/lambda=%d", 1/lambda)))
+print(ggplot(data.frame(x = 2 : n, y = sds), aes(x = x, y = y)) +
+        geom_hline(yintercept = 1/lambda, colour="blue") + geom_line(size = 2) +
+        labs(x = "Number of Samples", 
+             y = "Cumulative Exponential Samples Standard Deviation",
+             title = paste('Fig.', fig_num, ': Exponential Samples Standard Deviation Estimator')) +
+        geom_text(data = annotations, aes(x = x, y = y, label = label), col = "blue", vjust = -1, size = 4))
+```
+```{r echo=FALSE, results="hide"}
+fig_num <- fig_num + 1
+```
+
+## Normalized Exponential Samples Means Distribution
+
+### Central Limit Theorem Illustration
+
+According to the **Central Limit Theorem (CLT)**, the distribution of the averages of iid samples approaches a normal distribution as the number of samples increases. The simulation below illustrates the CLT theorem with the exponential distribution as the underlying population. Figure `r fig_num` shows the density histograms for one thousand trials of the *normalized* (Explained below) N exponential samples means, for sample sizes 5, 10, and 40. The three histograms, as examined from left to right with increasing sample size, illustrates the CLT: As the sample size increases, the distribution of the exponential samples means increasingly approaches a normal distribution. The overlapped standard normal distribution line provides additional visual evidence of the CTL.
+
+The exponential samples means are *normalized* as shown below (See the `normalize_mean` R function in the R code chunck below):
+
+$\mu$: Exponential distribution's mean ($1/\lambda$). $\sigma$: Exponential distribution's variance ($1/\lambda^2$)
+
+Normalized samples mean:$\frac{\bar X - \mu}{\sqrt{\frac{\sigma^2}{n}}} = \sqrt{n}\frac{\bar X - \mu}{\sigma} = \sqrt{n}\frac{\bar X - \frac{1}{\lambda}}{\frac{1}{\lambda}}$
+
+```{r clt_1, fig.width=9, fig.height = 4, fig.align='center'}
+nosim <- 1000
+normalize_mean <- function(x, n) sqrt(n) * (mean(x) - 1/lambda) / (1/lambda)
+dat <- data.frame(
+  x = c(apply(matrix(rexp(nosim * 5, lambda), nosim), 1, normalize_mean, 5),
+        apply(matrix(rexp(nosim * 10, lambda), nosim), 1, normalize_mean, 10),
+        apply(matrix(rexp(nosim * 40, lambda), nosim), 1, normalize_mean, 40)),
+  size = factor(rep(c(5, 10, 40), rep(nosim, 3))))
+print(ggplot(dat, aes(x = x, fill = size)) + 
+        geom_histogram(alpha = .20, binwidth=.3, colour = "black", aes(y = ..density..)) +
+        stat_function(fun = dnorm, size = 2) +
+        geom_vline(xintercept = 0, colour="blue", linetype = "longdash", size = 1.5) +
+        facet_grid(. ~ size) + 
+        labs(x = "Normalized Exponential Samples Means", 
+             y = "Distribution Density",
+             title = 
+               paste('Fig.', 
+                     fig_num, ': Normalized Exponential Samples Means Distribution With Increasing Sample Sizes')))
+```
+```{r echo=FALSE, results="hide"}
+fig_num <- fig_num + 1
+```
+
+### Distributions of the Samples (Not *Normally* Distributed) vs. The Means of Samples (*Normally* Distributed)
+
+One of the remarkable properties of the CLT is that it applies to distributions that are not themselves *normally* distributed. For example, the exponential distribution is not *normally* distributed, and yet, as shown in Figure `r fig_num - 1` above, the distribution of the samples means does follow a normal distribution. Figure `r fig_num' below (See the corresponding R code in Appendix D) illustrates the point again by plotting side by side the density distributions of a large number of exponential samples, and of a large number of samples means. Note how the first distribution is not *normally* distributed (as expected, it's an expoential distribution!), and the second distribution is thanks to the CLT.
+
+```{r clt_2, echo=FALSE, fig.width=9, fig.height = 3, fig.align='center'}
+dat <- data.frame(
+  x = c(matrix(rexp(nosim, lambda), nosim), apply(matrix(rexp(nosim * 40, lambda), nosim), 1, mean)),
+  plot = factor(rep(c('Samples', 'Means of Samples'), rep(nosim, 2))))
+print(ggplot(dat, aes(x = x, fill = plot)) + 
+  geom_histogram(alpha = .20, binwidth=1, colour = "black", aes(y = ..density..)) +
+  geom_vline(xintercept = 1/lambda, colour="blue", linetype = "longdash") +
+  facet_grid(. ~ plot) + 
+    labs(x = "Sample Values", 
+             y = "Distribution Density",
+             title = 
+               paste('Fig.', 
+                     fig_num, ': Distributions of Exponential Samples vs. The Means of Exponential Samples')))
+```
+```{r echo=FALSE, results="hide"}
+fig_num <- fig_num + 1
+```
+
+## Appendices
+
+### Appendix A: R code for the Exponential Distribution Standard Deviation Estimator
+
+Figure `r fig_num` shows an exponential distribution sample with 100 drawn values.
+
+```{r appendix_a}
+lambda <- 0.2
+sample1 <- data.frame(x=rexp(100, rate = lambda))
+annotations <- data.frame(x = c(1/lambda + .5), y = c(.1), 
+        label = c(sprintf("Mean and Standard Deviation: %d", 1/lambda)))
+par(mar=c(0,0,0,0))
+print( 
+    ggplot(sample1, aes(x = x)) + geom_density() +
+    labs(x = 'Exponential Distribution Value', y = 'Density',
+         title = paste('Fig.', fig_num, ': Exponential Distribution Density')) +
+    geom_vline(xintercept = 1/lambda, colour="blue", linetype = "longdash") +
+    geom_text(data = annotations, aes(x = x, y = y, label = label), col = "blue", hjust = 0, size = 4))
+```
+```{r echo=FALSE, results="hide"}
+fig_num <- fig_num + 1
+```
+
+### Appendix B: R code for the Exponential Distribution Mean Estimator
+
+``` {r appendix_b, results='hide'}
+n <- 5000; lambda <- 0.2; means <- cumsum(rexp(n, lambda))/(1:n)
+annotations <- data.frame(x = c(2500), y = c(1/lambda), 
+        label = c(sprintf("Theoretical Exponential Distribution Average: 1/lambda=%d", 1/lambda)))
+g <- ggplot(data.frame(x = 1 : n, y = means), aes(x = x, y = y)) + 
+        geom_hline(yintercept = 1/lambda) + geom_line(size = 2) +
+        labs(x = "Number of Samples",
+             y = "Cumulative Exponential Samples Mean",
+             title = paste('Fig.', fig_num, ': Exponential Samples Mean Estimator')) +
+        geom_text(data = annotations, aes(x = x, y = y, label = label), col = "blue", vjust = -1, size = 4)
+```
+
+### Appendix C: Exponential Standard Deviation Estimator
+
+```{r appendix_c, results='hide'}
+samples <- rexp(n, lambda)
+sds <- c()
+for(i in 2:n){ sds[i-1] <- sd(samples[1:i])}
+annotations <- data.frame(x = c(500), y = c(1/lambda), 
+        label = c(sprintf("Theoretical Exponential Distribution Standard Deviation: 1/lambda=%d", 1/lambda)))
+g <- ggplot(data.frame(x = 2 : n, y = sds), aes(x = x, y = y)) +
+        geom_hline(yintercept = 1/lambda) + geom_line(size = 2) +
+        labs(x = "Number of Samples", 
+             y = "Cumulative Exponential Samples Standard Deviation",
+             title = paste('Fig.', fig_num, ': Exponential Samples Standard Deviation Estimator')) +
+        geom_text(data = annotations, aes(x = x, y = y, label = label), col = "blue", vjust = -1, size = 4)
+```
+
+### Appendix D: Exponential Samples vs. Means of Exponential Samples
+
+```{r}
+dat <- data.frame(
+  x = c(matrix(rexp(nosim, lambda), nosim), apply(matrix(rexp(nosim * 40, lambda), nosim), 1, mean)),
+  plot = factor(rep(c('Samples', 'Means of Samples'), rep(nosim, 2))))
+g <- ggplot(dat, aes(x = x, fill = plot)) + 
+  geom_histogram(alpha = .20, binwidth=1, colour = "black", aes(y = ..density..)) +
+  geom_vline(xintercept = 1/lambda, colour="blue", linetype = "longdash") +
+  facet_grid(. ~ plot) + 
+    labs(x = "Sample Values", 
+             y = "Distribution Density",
+             title = 
+               paste('Fig.', 
+                     fig_num, ': Distributions of Exponential Samples vs. The Means of Exponential Samples'))
+```
